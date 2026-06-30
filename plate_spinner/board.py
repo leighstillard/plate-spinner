@@ -31,7 +31,11 @@ class BoardService:
     def upsert_candidate(self,cand,now=None): return self.store.upsert_candidate(cand,self.map_candidate(cand),now or self.now())
     def assign_item(self,item_id, concern_id): return self.store.update_item(item_id, concern_id=concern_id)
     def pin_item(self,item_id, rank=0): return self.store.update_item(item_id, manual_rank=rank)
-    def snooze_item(self,item_id, until): return self.store.update_item(item_id, snoozed_until=until)
+    def snooze_item(self,item_id, until):
+        if not until: raise ValueError('snooze requires an "until" timestamp')
+        try: parse_dt(until)
+        except ValueError: raise ValueError(f'invalid snooze timestamp: {until!r}')
+        return self.store.update_item(item_id, snoozed_until=until)
     def dismiss_item(self,item_id): return self.store.update_item(item_id, status='dismissed')
     def mark_done(self,item_id): return self.store.update_item(item_id, status='done', completed_at=self.now())
     def focus(self, column_id):

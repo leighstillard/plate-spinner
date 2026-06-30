@@ -3,6 +3,7 @@ import json, sqlite3, hashlib
 from pathlib import Path
 from .models import ConcernColumn, SourceRef, WorkItem, utc_now
 from .connectors.base import NormalizedCandidate, DEFAULT_PRECEDENCE
+from .errors import StorageError
 
 def init_db(path: str):
     Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -28,9 +29,11 @@ class Store:
     def create_concern(self, name, id=None, kind=None, description=None, aliases=(), manual_filter=None, position=None):
         now=utc_now(); manual_filter=manual_filter or {}; id=id or name.lower().replace(' ','-')
         with self.con() as c:
+            if c.execute('select 1 from concerns where id=?',(id,)).fetchone():
+                raise StorageError(f'concern already exists: {id}')
             if position is None:
                 r=c.execute('select coalesce(max(position),-1)+1 p from concerns').fetchone(); position=r['p']
-            c.execute('insert or replace into concerns values(?,?,?,?,?,?,?,?,?,?)',(id,name,kind,description,position,'active',_json(list(aliases)),_json(manual_filter),now,now))
+            c.execute('insert into concerns values(?,?,?,?,?,?,?,?,?,?)',(id,name,kind,description,position,'active',_json(list(aliases)),_json(manual_filter),now,now))
         return self.get_concern(id)
     def get_concern(self,id):
         with self.con() as c: r=c.execute('select * from concerns where id=?',(id,)).fetchone()

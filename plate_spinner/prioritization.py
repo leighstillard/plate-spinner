@@ -15,7 +15,7 @@ def select_next_item(items, now: datetime):
         reasons=[]; skip=None
         if i.status in ('done','dismissed'): skip='closed'
         elif i.snoozed_until and parse_dt(i.snoozed_until)>now: skip='snoozed until '+i.snoozed_until
-        elif i.status=='blocked' and i.blocked_by: skip='blocked by '+', '.join(i.blocked_by)
+        elif i.status=='blocked': skip='blocked by '+', '.join(i.blocked_by) if i.blocked_by else 'blocked'
         elif i.status=='waiting' and i.manual_rank is None and not (i.due_at and parse_dt(i.due_at)<=now+timedelta(days=3)): skip='waiting'
         due=parse_dt(i.due_at); due_bucket=9
         if due:

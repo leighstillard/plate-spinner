@@ -7,12 +7,13 @@ from .connectors.simple import load_config, parse_md, parse_github, parse_jsonl
 def make(db):
     s=Store(db); init_db(db); return s, BoardService(s)
 
-def run_scan(svc, config_path):
+def run_scan(svc, config_path, only_source=None):
     cfg=load_config(config_path); summary={'seen':0,'created':0,'updated':0,'unmapped':0,'errors':0}
     for col in cfg.get('columns',[]):
         if not any(c.id==col['id'] for c in svc.store.list_concerns(include_archived=True)):
             svc.create_column(col['name'], id=col['id'], kind=col.get('kind'), aliases=tuple(col.get('aliases',())), filters=col.get('filters',{}))
     for src in cfg.get('sources',[]):
+        if only_source and only_source not in (src.get('type'), src.get('id')): continue
         before=len(svc.store.list_items())
         try:
             typ=src['type']
