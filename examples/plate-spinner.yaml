@@ -1,0 +1,27 @@
+columns:
+  - id: project
+    name: Project
+    kind: project
+    aliases: [Project, Partseeker]
+  - id: day-job
+    name: Day Job
+    kind: day_job
+    aliases: [work]
+  - id: personal
+    name: Personal
+    kind: personal
+    aliases: [home]
+sources:
+  - id: main-plan
+    type: project_plan
+    path: examples/project-plan.md
+  - id: local-todos
+    type: todo
+    path: examples/todos.md
+  - id: github-fixture
+    type: github
+    repo: leigh/plate-spinner
+    fixture_path: examples/github-issues.json
+  - id: inbox-calendar-jsonl
+    type: inbox_calendar
+    path: examples/inbox-calendar-candidates.jsonl

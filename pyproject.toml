@@ -1,0 +1,10 @@
+[project]
+name = "plate-spinner"
+version = "0.1.0"
+description = "Concern dashboard for routing attention"
+requires-python = ">=3.11"
+dependencies = ["fastapi", "uvicorn", "pyyaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

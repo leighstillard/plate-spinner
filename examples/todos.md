@@ -1,0 +1,2 @@
+- [ ] Buy groceries concern:Personal id:grocery #home
+- [ ] Follow up office concern:Day Job due:2026-07-01 id:office
