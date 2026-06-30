@@ -1,0 +1,2 @@
+{"kind":"email","id":"msg-1","title":"Prepare work deck","sender":"boss@company.example","snippet":"Please prepare deck","concern_hint":"Day Job","due_at":"2026-07-02T00:00:00+00:00"}
+{"kind":"calendar","id":"cal-1","title":"Unmapped calendar prep","calendar":"Other","scheduled_start_at":"2026-07-01T15:00:00+00:00"}

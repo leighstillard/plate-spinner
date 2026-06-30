@@ -1,0 +1,4 @@
+[
+  {"number": 42, "title": "Fix stale connector", "state": "open", "url": "https://example.test/42", "labels": ["Project"], "concern_hint": "Project"},
+  {"number": 43, "title": "Unmapped GitHub issue", "state": "open", "url": "https://example.test/43", "labels": []}
+]
