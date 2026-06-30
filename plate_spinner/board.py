@@ -39,6 +39,7 @@ class BoardService:
         try: parse_dt(until)
         except ValueError: raise ValueError(f'invalid snooze timestamp: {until!r}')
         return self.store.update_item(item_id, snoozed_until=until)
+    def unsnooze_item(self,item_id): return self.store.update_item(item_id, snoozed_until=None)
     def dismiss_item(self,item_id): return self.store.update_item(item_id, status='dismissed')
     def mark_done(self,item_id): return self.store.update_item(item_id, status='done', completed_at=self.now())
     def focus(self, column_id):
@@ -51,8 +52,10 @@ class BoardService:
             items=self.store.list_items(col.id, include_done=False)
             nxt, exps=select_next_item(items, nowdt)
             expmap={e.item_id:e for e in exps}
-            queue=[i for i in items if i.id != (nxt.id if nxt else None)][:queue_limit]
-            cols.append(ColumnSnapshot(col,nxt,expmap.get(nxt.id) if nxt else None,tuple(queue),sum(i.status=='blocked' for i in items),sum(i.status=='waiting' for i in items),sum(i.status=='candidate' for i in items)))
+            snoozed=[i for i in items if (expmap.get(i.id) and (expmap[i.id].blocked_or_skipped_reason or '').startswith('snoozed'))]
+            snoozed_ids={i.id for i in snoozed}
+            queue=[i for i in items if i.id != (nxt.id if nxt else None) and i.id not in snoozed_ids][:queue_limit]
+            cols.append(ColumnSnapshot(col,nxt,expmap.get(nxt.id) if nxt else None,tuple(queue),sum(i.status=='blocked' for i in items),sum(i.status=='waiting' for i in items),sum(i.status=='candidate' for i in items),tuple(snoozed)))
         items=self.store.list_items(include_done=False)
         unmapped=[i.to_dict() for i in items if i.concern_id is None and i.status not in ('dismissed','done')]
         blocked=[{'item':i.to_dict(),'blocked_by':list(i.blocked_by),'blocker_status':[self._status_or_external(x) for x in i.blocked_by]} for i in items if i.status=='blocked' or i.blocked_by]
