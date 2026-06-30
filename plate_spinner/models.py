@@ -91,8 +91,9 @@ class ColumnSnapshot:
     blocked_count: int = 0
     waiting_count: int = 0
     new_candidate_count: int = 0
+    snoozed: tuple[WorkItem,...] = ()
     def to_dict(self):
-        return {'column':self.column.to_dict(),'next_item':self.next_item.to_dict() if self.next_item else None,'next_explanation':self.next_explanation.to_dict() if self.next_explanation else None,'queue':[i.to_dict() for i in self.queue],'blocked_count':self.blocked_count,'waiting_count':self.waiting_count,'new_candidate_count':self.new_candidate_count}
+        return {'column':self.column.to_dict(),'next_item':self.next_item.to_dict() if self.next_item else None,'next_explanation':self.next_explanation.to_dict() if self.next_explanation else None,'queue':[i.to_dict() for i in self.queue],'blocked_count':self.blocked_count,'waiting_count':self.waiting_count,'new_candidate_count':self.new_candidate_count,'snoozed':[i.to_dict() for i in self.snoozed]}
 
 @dataclass(frozen=True)
 class BoardSnapshot:
