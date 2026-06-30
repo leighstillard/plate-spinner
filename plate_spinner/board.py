@@ -16,8 +16,11 @@ class BoardService:
     def create_column(self,name,id=None,kind=None,description=None,aliases=(),filters=None): return self.store.create_concern(name,id=id,kind=kind,description=description,aliases=aliases,manual_filter=filters or {})
     def rename_column(self,id,name): return self.store.update_concern(id,name=name)
     def reorder_columns(self,ids):
-        out=[]
-        for pos,id in enumerate(ids): out.append(self.store.update_concern(id,position=pos))
+        out=[]; pos=0
+        for id in ids: out.append(self.store.update_concern(id,position=pos)); pos+=1
+        # renumber any columns omitted from the request so positions stay unique
+        for c in self.store.list_concerns(include_archived=True):
+            if c.id not in ids: self.store.update_concern(c.id,position=pos); pos+=1
         return out
     def archive_column(self,id): return self.store.archive_concern(id)
     def map_candidate(self,cand):

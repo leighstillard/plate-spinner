@@ -5,6 +5,9 @@ description = "Concern dashboard for routing attention"
 requires-python = ">=3.11"
 dependencies = ["fastapi", "uvicorn", "pyyaml"]
 
+[project.scripts]
+plate-spinner = "plate_spinner.cli:main"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]

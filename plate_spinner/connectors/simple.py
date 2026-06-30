@@ -22,7 +22,9 @@ def parse_md(path, source_type, source_id=None):
 def parse_github(path, source_id='repo'):
     data=json.loads(Path(path).read_text()); out=[]
     for x in data:
-        num=str(x.get('number') or x.get('id')); repo=x.get('repo') or source_id
+        num=x.get('number') or x.get('id')
+        if num is None: continue
+        num=str(num); repo=x.get('repo') or source_id
         labels=tuple(l['name'] if isinstance(l,dict) else l for l in x.get('labels',[]))
         out.append(NormalizedCandidate('github',repo,num,f'github:{repo}:{num}',x.get('title','untitled'),url=x.get('url') or x.get('html_url'),status='done' if x.get('state')=='closed' else 'candidate',concern_hint=x.get('concern_hint') or x.get('concern'),labels=labels,participants=tuple(x.get('assignees',[])),due_at=(x.get('milestone') or {}).get('due_on') if isinstance(x.get('milestone'),dict) else None,raw={'number':num}))
     return out
@@ -32,6 +34,7 @@ def parse_jsonl(path, source_id='inbox-calendar-jsonl'):
     for line in Path(path).read_text().splitlines():
         if not line.strip(): continue
         x=json.loads(line); raw={k:v for k,v in x.items() if k not in ('body','full_body','html','attachments_text')}
+        if x.get('id') is None: continue
         kind=x.get('kind','email'); ext=str(x.get('id')); title=x.get('title') or x.get('subject') or 'untitled'
         parts=tuple(y for y in [x.get('sender'),x.get('organizer')] if y)
         labels=tuple(x.get('labels',[]));

@@ -3,6 +3,7 @@ import argparse, json, sys
 from .store import Store, init_db
 from .board import BoardService
 from .connectors.simple import load_config, parse_md, parse_github, parse_jsonl
+from .errors import ConfigError
 
 def make(db):
     s=Store(db); init_db(db); return s, BoardService(s)
@@ -14,20 +15,20 @@ def run_scan(svc, config_path, only_source=None):
             svc.create_column(col['name'], id=col['id'], kind=col.get('kind'), aliases=tuple(col.get('aliases',())), filters=col.get('filters',{}))
     for src in cfg.get('sources',[]):
         if only_source and only_source not in (src.get('type'), src.get('id')): continue
+        typ=src.get('type'); sid=src.get('id') or src.get('repo') or src.get('path') or typ or 'default'
         before=len(svc.store.list_items())
         try:
-            typ=src['type']
-            if typ in ('project_plan','todo'): cands=parse_md(src['path'], typ, src.get('id'))
-            elif typ=='github': cands=parse_github(src['fixture_path'], src.get('repo') or src.get('id','repo'))
-            elif typ=='inbox_calendar': cands=parse_jsonl(src['path'], src.get('id','inbox-calendar-jsonl'))
-            else: cands=[]
+            if typ in ('project_plan','todo'): cands=parse_md(src['path'], typ, sid)
+            elif typ=='github': cands=parse_github(src['fixture_path'], sid)
+            elif typ=='inbox_calendar': cands=parse_jsonl(src['path'], sid)
+            else: raise ConfigError(f'unknown source type: {typ!r}')
             for c in cands:
                 item=svc.upsert_candidate(c); summary['seen']+=1
                 if item.concern_id is None: summary['unmapped']+=1
             after=len(svc.store.list_items()); summary['created']+=max(0,after-before); summary['updated']+=max(0,len(cands)-max(0,after-before))
-            svc.store.record_scan_health(typ, src.get('id',src.get('path','default')), None, 'ok', None, {'seen':len(cands)}, svc.now())
+            svc.store.record_scan_health(typ or 'unknown', sid, None, 'ok', None, {'seen':len(cands)}, svc.now())
         except Exception as e:
-            summary['errors']+=1; svc.store.record_scan_health(src.get('type','unknown'), src.get('id','unknown'), None, 'error', str(e), {'errors':1}, svc.now())
+            summary['errors']+=1; svc.store.record_scan_health(typ or 'unknown', sid, None, 'error', str(e), {'errors':1}, svc.now())
     return summary
 
 def main(argv=None):
@@ -43,7 +44,7 @@ def main(argv=None):
     if a.cmd=='init': init_db(a.db); return 0
     s,svc=make(a.db)
     if a.cmd=='column' and a.action=='add': print(json.dumps(svc.create_column(a.name,id=a.id,kind=a.kind).to_dict())); return 0
-    if a.cmd=='scan': print(json.dumps(run_scan(svc,a.config), sort_keys=True)); return 0
+    if a.cmd=='scan': summary=run_scan(svc,a.config); print(json.dumps(summary, sort_keys=True)); return 1 if summary['errors'] else 0
     if a.cmd=='board': print(json.dumps(svc.get_snapshot().to_dict(), sort_keys=True)); return 0
     if a.cmd=='attention': print(json.dumps(svc.get_snapshot().attention, sort_keys=True)); return 0
     if a.cmd=='focus': print(json.dumps(svc.focus(a.column).to_dict(), sort_keys=True)); return 0

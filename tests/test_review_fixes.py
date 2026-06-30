@@ -86,3 +86,51 @@ def test_f2_dashboard_escapes_source_strings(tmp_path):
     html = TestClient(create_app(store=store, service=svc)).get("/").text
     assert "function esc(" in html
     assert "esc(c.next_item.title)" in html and "esc(i.title)" in html
+
+
+def test_cr_patch_applies_name_and_other_fields(tmp_path):
+    store, svc = _svc(tmp_path)
+    svc.create_column("Project", id="project")
+    client = TestClient(create_app(store=store, service=svc))
+    out = client.patch("/api/columns/project", json={"name": "Renamed", "description": "desc"}).json()
+    assert out["name"] == "Renamed" and out["description"] == "desc"
+
+
+def test_cr_malformed_bodies_return_422(tmp_path):
+    store, svc = _svc(tmp_path)
+    svc.create_column("Project", id="project")
+    item = svc.upsert_candidate(NormalizedCandidate(source_type="todo", source_id="t", external_id="a", dedupe_key="todo:t:a", title="X", concern_hint="project"), now=svc.now())
+    client = TestClient(create_app(store=store, service=svc))
+    assert client.post(f"/api/items/{item.id}/assign", json={}).status_code == 422
+    assert client.post("/api/columns", json={}).status_code == 422
+
+
+def test_cr_reorder_keeps_positions_unique(tmp_path):
+    store, svc = _svc(tmp_path)
+    for c in ("a", "b", "c"):
+        svc.create_column(c.upper(), id=c)
+    svc.reorder_columns(["c", "a"])  # partial payload omits "b"
+    positions = [col.position for col in store.list_concerns()]
+    assert len(positions) == len(set(positions))  # no duplicates
+
+
+def test_cr_unknown_source_type_is_an_error(tmp_path):
+    from plate_spinner.cli import run_scan
+    store, svc = _svc(tmp_path)
+    cfg = tmp_path / "bad.yaml"
+    cfg.write_text("sources:\n  - id: oops\n    type: bogus\n    path: nope\n")
+    summary = run_scan(svc, str(cfg))
+    assert summary["errors"] == 1
+    health = store.list_scan_health()
+    assert health and health[0]["last_status"] == "error"
+
+
+def test_cr_manual_assignment_survives_rescan(tmp_path):
+    store, svc = _svc(tmp_path)
+    svc.create_column("Project", id="project")
+    svc.create_column("Other", id="other")
+    cand = NormalizedCandidate(source_type="todo", source_id="t", external_id="a", dedupe_key="todo:t:a", title="Movable", concern_hint="project")
+    item = svc.upsert_candidate(cand, now=svc.now())
+    svc.assign_item(item.id, "other")  # manual override
+    svc.upsert_candidate(cand, now=svc.now())  # rescan re-maps hint to "project"
+    assert store.get_item(item.id).concern_id == "other"

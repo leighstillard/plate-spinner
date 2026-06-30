@@ -7,7 +7,7 @@ from .board import BoardService
 from .cli import run_scan
 from .errors import StorageError
 
-DEFAULT_DB=os.environ.get('PLATE_SPINNER_DB','/tmp/plate-spinner.sqlite')
+DEFAULT_DB=os.environ.get('PLATE_SPINNER_DB', os.path.expanduser('~/.hermes/plate-spinner.sqlite'))
 DEFAULT_CONFIG=os.environ.get('PLATE_SPINNER_CONFIG', os.path.expanduser('~/.hermes/plate-spinner.yaml'))
 
 def create_app(store: Store|None=None, service: BoardService|None=None, config_path: str|None=None):
@@ -36,15 +36,20 @@ def create_app(store: Store|None=None, service: BoardService|None=None, config_p
     @app.post('/api/items/{id}/pin')
     def pin(id: str, payload: dict = Body(default={})): return service.pin_item(id, payload.get('rank',0)).to_dict()
     @app.post('/api/items/{id}/assign')
-    def assign(id: str, payload: dict = Body(default={})): return service.assign_item(id, payload['concern_id']).to_dict()
+    def assign(id: str, payload: dict = Body(default={})):
+        if 'concern_id' not in payload: raise HTTPException(422, 'concern_id required')
+        return service.assign_item(id, payload['concern_id']).to_dict()
     @app.post('/api/columns')
     def create_column(payload: dict):
+        if 'name' not in payload: raise HTTPException(422, 'name required')
         try: return service.create_column(payload['name'], id=payload.get('id'), kind=payload.get('kind'), description=payload.get('description'), aliases=tuple(payload.get('aliases',())), filters=payload.get('filters',{})).to_dict()
         except StorageError as e: raise HTTPException(409, str(e))
     @app.patch('/api/columns/{id}')
     def patch_column(id: str, payload: dict):
-        if 'name' in payload: return service.rename_column(id, payload['name']).to_dict()
-        return store.update_concern(id, **payload).to_dict()
+        if 'name' in payload: store.update_concern(id, name=payload['name'])
+        rest={k:v for k,v in payload.items() if k!='name'}
+        if rest: store.update_concern(id, **rest)
+        return store.get_concern(id).to_dict()
     @app.post('/api/columns/reorder')
     def reorder(payload: dict): return [c.to_dict() for c in service.reorder_columns(payload.get('column_ids',[]))]
     @app.post('/api/columns/{id}/archive')
